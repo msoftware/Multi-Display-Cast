@@ -12,7 +12,18 @@
     tools:context="es.munix.multicast.MainActivity">
 
     <TextView
+        android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"/>
+        android:text="Esta es una aplicación de ejemplo que usa la librería MultiCast desarrollada por munix"/>
+    <Button
+        android:id="@+id/videoButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/textView"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="43dp"
+        android:enabled="false"
+        android:onClick="playVideo"
+        android:text="Reproducir video"/>
 </RelativeLayout>
