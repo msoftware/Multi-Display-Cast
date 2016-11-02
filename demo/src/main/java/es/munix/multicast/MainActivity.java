@@ -2,12 +2,13 @@ package es.munix.multicast;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 
-import es.munix.multidisplaycast.CastInstance;
 import es.munix.multidisplaycast.CastListener;
+import es.munix.multidisplaycast.CastManager;
 
 public class MainActivity extends AppCompatActivity implements CastListener {
 
@@ -18,21 +19,22 @@ public class MainActivity extends AppCompatActivity implements CastListener {
 
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_main );
-        CastInstance.getInstance().setDiscoveryManager();
-        CastInstance.getInstance().setListener( this );
+        CastManager.getInstance().setDiscoveryManager();
+        CastManager.getInstance().setListener( this );
         videoButton = (Button) findViewById( R.id.videoButton );
     }
 
     @Override
     public boolean onCreateOptionsMenu( Menu menu ) {
         getMenuInflater().inflate( R.menu.cast_menu, menu );
-        CastInstance.getInstance().registerForActivity( this, menu, R.id.castMenu );
+        CastManager.getInstance().registerForActivity( this, menu, R.id.castMenu );
         return super.onCreateOptionsMenu( menu );
     }
 
     @Override
     protected void onDestroy() {
-        CastInstance.getInstance().onDestroy();
+        Log.v( "Activity", "ondestroy" );
+        CastManager.getInstance().onDestroy();
         super.onDestroy();
     }
 
@@ -60,10 +62,10 @@ public class MainActivity extends AppCompatActivity implements CastListener {
 
     public void playVideo( View v ) {
         if ( videoButton.getText().toString().equals( "Detener video" ) ) {
-            CastInstance.getInstance().stop();
+            CastManager.getInstance().stop();
         } else {
-            CastInstance.getInstance()
-                    .playMedia( "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4", "video/mp4", "Big Buck Bunny", "MP4", "http://www.frostclick.com/wp/wp-content/uploads/2009/01/bigbuckbunny200x200.jpg" );
+            CastManager.getInstance()
+                    .playMedia( "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4", "video/mp4", "Big Buck Bunny", "MP4", "http://camendesign.com/code/video_for_everybody/poster.jpg" );
         }
     }
 }

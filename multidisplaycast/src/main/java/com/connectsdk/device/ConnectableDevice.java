@@ -33,7 +33,6 @@ import com.connectsdk.service.capability.ExternalInputControl;
 import com.connectsdk.service.capability.KeyControl;
 import com.connectsdk.service.capability.Launcher;
 import com.connectsdk.service.capability.MediaControl;
-import com.connectsdk.service.capability.MediaPlayer;
 import com.connectsdk.service.capability.MouseControl;
 import com.connectsdk.service.capability.PlaylistControl;
 import com.connectsdk.service.capability.PowerControl;
@@ -517,10 +516,7 @@ public class ConnectableDevice implements DeviceServiceListener {
      * This method is deprecated. Use
      * `ConnectableDevice#getCapability(Class<T> controllerClass)` method instead
      */
-    @Deprecated
-    public MediaPlayer getMediaPlayer() {
-        return getCapability( MediaPlayer.class );
-    }
+
 
     /**
      * Accessor for highest priority MediaControl object

@@ -15,7 +15,9 @@
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Esta es una aplicación de ejemplo que usa la librería MultiCast desarrollada por munix"/>
+        android:gravity="center_horizontal"
+        android:text="Antes de reproducir el video por favor conecta la aplicación a un dispositivo remoto compatible"/>
+
     <Button
         android:id="@+id/videoButton"
         android:layout_width="wrap_content"

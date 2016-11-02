@@ -9,6 +9,10 @@
 
     <application>
 
+        <service android:name="es.munix.multidisplaycast.DummyService" android:enabled="true"
+                 android:exported="false"
+                 android:stopWithTask="false"/>
+        <receiver android:name="es.munix.multidisplaycast.CastReceiver"/>
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version"/>

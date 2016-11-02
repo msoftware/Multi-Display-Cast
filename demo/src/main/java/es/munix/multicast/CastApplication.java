@@ -5,7 +5,7 @@ import android.content.Context;
 
 import com.crashlytics.android.Crashlytics;
 
-import es.munix.multidisplaycast.CastInstance;
+import es.munix.multidisplaycast.CastManager;
 import io.fabric.sdk.android.Fabric;
 
 /**
@@ -25,6 +25,6 @@ public class CastApplication extends Application {
         super.onCreate();
         Fabric.with( this, new Crashlytics() );
         context = this.getApplicationContext();
-        CastInstance.register( getApplicationContext() );
+        CastManager.register( getApplicationContext() );
     }
 }
