@@ -21,6 +21,7 @@
 package com.connectsdk.discovery.provider;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.connectsdk.core.Util;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Timer;
@@ -171,7 +173,9 @@ public class ZeroconfDiscoveryProvider implements DiscoveryProvider {
         if ( jmdns != null ) {
             for ( DiscoveryFilter searchTarget : serviceFilters ) {
                 String filter = searchTarget.getServiceFilter();
-                jmdns.removeServiceListener( filter, jmdnsListener );
+                if ( !TextUtils.isEmpty( filter ) ) {
+                    jmdns.removeServiceListener( filter, jmdnsListener );
+                }
             }
         }
     }
@@ -200,7 +204,9 @@ public class ZeroconfDiscoveryProvider implements DiscoveryProvider {
             if ( jmdns != null ) {
                 for ( DiscoveryFilter searchTarget : serviceFilters ) {
                     String filter = searchTarget.getServiceFilter();
-                    jmdns.addServiceListener( filter, jmdnsListener );
+                    if ( !TextUtils.isEmpty( filter ) ) {
+                        jmdns.addServiceListener( filter, jmdnsListener );
+                    }
                 }
             }
         } catch ( IOException e ) {
@@ -263,7 +269,7 @@ public class ZeroconfDiscoveryProvider implements DiscoveryProvider {
 
             long killPoint = new Date().getTime() - TIMEOUT;
 
-            for ( String key : foundServices.keySet() ) {
+            for ( String key : Collections.list( foundServices.keys() ) ) {
                 ServiceDescription service = foundServices.get( key );
                 if ( service == null || service.getLastDetection() < killPoint ) {
                     killKeys.add( key );

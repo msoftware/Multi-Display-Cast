@@ -19,7 +19,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:padding="12dp">
 
     <ImageView
         android:id="@+id/icon"
@@ -27,7 +27,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_centerVertical="true"
-        android:layout_marginRight="8dp"
+        android:layout_marginRight="12dp"
         android:src="@drawable/airplay"/>
 
     <RelativeLayout
@@ -39,20 +39,21 @@
 
         <TextView
             android:id="@+id/title"
+            style="@style/Widget.MediaRouter.ChooserText.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/Widget.MediaRouter.ChooserText.Primary"
-            android:textStyle="bold"
+            android:textColor="#212121"
             tools:text="Title"/>
 
         <TextView
             android:id="@+id/subtitle"
+            style="@style/Widget.MediaRouter.ChooserText.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignLeft="@+id/title"
             android:layout_alignStart="@+id/title"
             android:layout_below="@+id/title"
-            android:textAppearance="@style/Widget.MediaRouter.ChooserText.Secondary"
+            android:textColor="#616161"
             tools:text="Subtitle"/>
     </RelativeLayout>
 </RelativeLayout>

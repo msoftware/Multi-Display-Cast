@@ -25,6 +25,7 @@ import com.connectsdk.service.DeviceService;
 import com.connectsdk.service.capability.MediaControl;
 import com.connectsdk.service.capability.MediaPlayer;
 import com.connectsdk.service.command.ServiceCommandError;
+import com.google.gson.Gson;
 
 import java.util.List;
 
@@ -111,24 +112,23 @@ public class CastInstance implements DiscoveryManagerListener, MenuItem.OnMenuIt
     @Override
     public void onDeviceAdded( DiscoveryManager manager, ConnectableDevice device ) {
         calculateMenuVisibility();
-    }
-
-    @Override
-    public void onDeviceUpdated( DiscoveryManager manager, ConnectableDevice device ) {
-        log( "onDeviceUpdated " );
-        calculateMenuVisibility();
-
         String mRecentDeviceId = getRecentDeviceId();
 
-        log( "onDeviceUpdated mRecentDeviceId " + mRecentDeviceId + ", " + device.getId() );
-
         if ( mRecentDeviceId != null && connectableDevice == null ) {
+            log( "onDeviceUpdated: " + device.getFriendlyName() + ", mRecentDeviceId " + mRecentDeviceId + ", " + device
+                    .getId() );
+
             if ( device.getId().equalsIgnoreCase( mRecentDeviceId ) ) {
                 log( "onDeviceAdded launch connect for " + mRecentDeviceId );
                 device.addListener( this );
                 device.connect();
             }
         }
+    }
+
+    @Override
+    public void onDeviceUpdated( DiscoveryManager manager, ConnectableDevice device ) {
+        calculateMenuVisibility();
     }
 
     @Override
@@ -139,7 +139,7 @@ public class CastInstance implements DiscoveryManagerListener, MenuItem.OnMenuIt
 
     @Override
     public void onDiscoveryFailed( DiscoveryManager manager, ServiceCommandError error ) {
-        log( "onDiscoveryFailed" );
+        Log.e( TAG, "onDiscoveryFailed" );
         calculateMenuVisibility();
     }
 
@@ -214,17 +214,16 @@ public class CastInstance implements DiscoveryManagerListener, MenuItem.OnMenuIt
                     .setIcon( icon )
                     .build();
 
-            if ( connectableDevice != null ) {
 
-                connectableDevice.getMediaPlayer()
-                        .playMedia( mediaInfo, false, new MediaPlayer.LaunchListener() {
+            connectableDevice.getMediaPlayer()
+                    .playMedia( mediaInfo, false, new MediaPlayer.LaunchListener() {
 
-                            public void onSuccess( MediaPlayer.MediaLaunchObject object ) {
+                        public void onSuccess( MediaPlayer.MediaLaunchObject object ) {
 
-                                mMediaControl = object.mediaControl;
-                                if ( listener != null ) {
-                                    listener.onPlayStart();
-                                }
+                            mMediaControl = object.mediaControl;
+                            if ( listener != null ) {
+                                listener.onPlayStart();
+                            }
 
                             /*castManager.launchSession = object.launchSession;
                             castManager.
@@ -232,22 +231,18 @@ public class CastInstance implements DiscoveryManagerListener, MenuItem.OnMenuIt
                             castManager.isPlaying = true;
                             startUpdating();
                             enableControls();*/
-                            }
+                        }
 
-                            @Override
-                            public void onError( ServiceCommandError error ) {
+                        @Override
+                        public void onError( ServiceCommandError error ) {
                             /*if ( castManager.launchSession != null ) {
                                 castManager.launchSession.close( null );
                                 castManager.launchSession = null;
                                 castManager.isPlaying = false;
                                 stopUpdating();
                             }*/
-                            }
-                        } );
-            } else {
-                connectableDevice = null;
-                onMenuItemClick( castMenuItem );
-            }
+                        }
+                    } );
         }
     }
 
@@ -348,11 +343,12 @@ public class CastInstance implements DiscoveryManagerListener, MenuItem.OnMenuIt
 
     @Override
     public void onCapabilityUpdated( ConnectableDevice device, List<String> added, List<String> removed ) {
-
+        log( "onCapabilityUpdated " + device.getFriendlyName() + " added: " + new Gson().toJson( added ) + ", removed: " + new Gson()
+                .toJson( removed ) );
     }
 
     @Override
     public void onConnectionFailed( ConnectableDevice device, ServiceCommandError error ) {
-        log( "onConnectionFailed" );
+        Log.e( TAG, "onConnectionFailed" );
     }
 }

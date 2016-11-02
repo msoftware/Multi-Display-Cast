@@ -140,7 +140,7 @@ public class DIALService extends DeviceService implements Launcher {
     @Override
     public void launchAppWithInfo( final AppInfo appInfo, Object params, final AppLaunchListener listener ) {
         ServiceCommand<ResponseListener<Object>> command = new ServiceCommand<ResponseListener<Object>>( getCommandProcessor(), requestURL( appInfo
-                .getName() ), params, new ResponseListener<Object>() {
+                .getId() ), params, new ResponseListener<Object>() {
             @Override
             public void onError( ServiceCommandError error ) {
                 Util.postError( listener, new ServiceCommandError( 0, "Problem Launching app", null ) );
@@ -397,8 +397,9 @@ public class DIALService extends DeviceService implements Launcher {
                     if ( payload != null || command.getHttpMethod()
                             .equalsIgnoreCase( ServiceCommand.TYPE_POST ) ) {
                         connection.setMethod( HttpConnection.Method.POST );
+                        // Always set Content-Type to bypass Android bug: https://code.google.com/p/android/issues/detail?id=205273
+                        connection.setHeader( HttpMessage.CONTENT_TYPE_HEADER, "text/plain; " + "charset=\"utf-8\"" );
                         if ( payload != null ) {
-                            connection.setHeader( HttpMessage.CONTENT_TYPE_HEADER, "text/plain; " + "charset=\"utf-8\"" );
                             connection.setPayload( payload.toString() );
                         }
                     } else if ( command.getHttpMethod()
@@ -411,6 +412,10 @@ public class DIALService extends DeviceService implements Launcher {
                         Util.postSuccess( command.getResponseListener(), connection.getResponseString() );
                     } else if ( code == 201 ) {
                         Util.postSuccess( command.getResponseListener(), connection.getResponseHeader( "Location" ) );
+                    } else if ( code == 404 ) {
+                        Util.postError( command.getResponseListener(), new ServiceCommandError( 0, "Could not find requested application", null ) );
+                    } else if ( code == 501 ) {
+                        Util.postError( command.getResponseListener(), new ServiceCommandError( 0, "Was unable to perform the requested action, not supported", null ) );
                     } else {
                         Util.postError( command.getResponseListener(), ServiceCommandError.getError( code ) );
                     }

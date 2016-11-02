@@ -123,6 +123,22 @@ public class ConnectableDevice implements DeviceServiceListener {
         setLastSeenOnWifi( json.optString( KEY_LAST_SEEN, null ) );
         setLastConnected( json.optLong( KEY_LAST_CONNECTED, 0 ) );
         setLastDetection( json.optLong( KEY_LAST_DETECTED, 0 ) );
+
+        //Deserialize the associated services as well
+        JSONObject jsonServices = json.optJSONObject( KEY_SERVICES );
+        if ( jsonServices != null ) {
+            Iterator<?> keys = jsonServices.keys();
+            if ( keys != null ) {
+                while ( keys.hasNext() ) {
+                    String key = (String) keys.next();
+                    JSONObject serviceObject = jsonServices.optJSONObject( key );
+                    if ( serviceObject != null ) {
+                        DeviceService service = DeviceService.getService( serviceObject );
+                        addService( service );
+                    }
+                }
+            }
+        }
     }
 
     public static ConnectableDevice createFromConfigString( String ipAddress, String friendlyName, String modelName, String modelNumber ) {

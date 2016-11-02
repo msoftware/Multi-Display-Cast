@@ -30,8 +30,10 @@ import java.net.URLEncoder;
 
 public class HttpMessage {
 
+    public final static String CONTENT_LENGTH_HEADER = "Content-Length";
     public final static String CONTENT_TYPE_HEADER = "Content-Type";
     public final static String CONTENT_TYPE_TEXT_XML = "text/xml; charset=utf-8";
+    public final static String CONTENT_TYPE_TEXT_PLAIN = "text/plain; charset=\"utf-8\"";
     public final static String CONTENT_TYPE_APPLICATION_PLIST = "application/x-apple-binary-plist";
     public final static String UDAP_USER_AGENT = "UDAP/2.0";
     public final static String LG_ELECTRONICS = "LG Electronics";
@@ -44,7 +46,7 @@ public class HttpMessage {
         HttpPost post = null;
         try {
             post = new HttpPost( uri );
-            post.setHeader( "Content-Type", CONTENT_TYPE_TEXT_XML );
+            post.setHeader( CONTENT_TYPE_HEADER, CONTENT_TYPE_TEXT_XML );
         } catch ( IllegalArgumentException e ) {
             e.printStackTrace();
         }
@@ -54,7 +56,7 @@ public class HttpMessage {
 
     public static HttpPost getUDAPHttpPost( String uri ) {
         HttpPost post = getHttpPost( uri );
-        post.setHeader( "User-Agent", UDAP_USER_AGENT );
+        post.setHeader( USER_AGENT, UDAP_USER_AGENT );
 
         return post;
     }
@@ -63,7 +65,7 @@ public class HttpMessage {
         String soapAction = "\"urn:schemas-upnp-org:service:AVTransport:1#" + action + "\"";
 
         HttpPost post = getHttpPost( uri );
-        post.setHeader( "Soapaction", soapAction );
+        post.setHeader( SOAP_HEADER, soapAction );
 
         return post;
     }
@@ -72,7 +74,7 @@ public class HttpMessage {
         String soapAction = "\"urn:schemas-upnp-org:service:RenderingControl:1#" + action + "\"";
 
         HttpPost post = getHttpPost( uri );
-        post.setHeader( "Soapaction", soapAction );
+        post.setHeader( SOAP_HEADER, soapAction );
 
         return post;
     }
@@ -83,7 +85,7 @@ public class HttpMessage {
 
     public static HttpGet getUDAPHttpGet( String uri ) {
         HttpGet get = getHttpGet( uri );
-        get.setHeader( "User-Agent", UDAP_USER_AGENT );
+        get.setHeader( USER_AGENT, UDAP_USER_AGENT );
 
         return get;
     }

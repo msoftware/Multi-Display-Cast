@@ -22,7 +22,6 @@ package com.connectsdk.discovery.provider.ssdp;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
@@ -57,7 +56,7 @@ public class SSDPClient {
     public static final String BYEBYE = "ssdp:byebye";
     public static final String UPDATE = "ssdp:update";
     static int MX = 5;
-    DatagramSocket datagramSocket;
+    MulticastSocket datagramSocket;
     MulticastSocket multicastSocket;
     SocketAddress multicastGroup;
     NetworkInterface networkInterface;
@@ -65,10 +64,10 @@ public class SSDPClient {
     int timeout = 0;
 
     public SSDPClient( InetAddress source ) throws IOException {
-        this( source, new MulticastSocket( PORT ), new DatagramSocket( null ) );
+        this( source, new MulticastSocket( PORT ), new MulticastSocket( null ) );
     }
 
-    public SSDPClient( InetAddress source, MulticastSocket mcSocket, DatagramSocket dgSocket ) throws IOException {
+    public SSDPClient( InetAddress source, MulticastSocket mcSocket, MulticastSocket dgSocket ) throws IOException {
         localInAddress = source;
         multicastSocket = mcSocket;
         datagramSocket = dgSocket;
@@ -154,7 +153,7 @@ public class SSDPClient {
         }
 
         if ( datagramSocket != null ) {
-            datagramSocket.disconnect();
+            //datagramSocket.disconnect();
             datagramSocket.close();
         }
     }

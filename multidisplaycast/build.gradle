@@ -44,4 +44,8 @@ dependencies {
     compile 'com.android.support:appcompat-v7:+'
     compile 'com.android.support:mediarouter-v7:+'
     compile 'com.google.android.gms:play-services-cast:+'
+
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.0'
+
 }

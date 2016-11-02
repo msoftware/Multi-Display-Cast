@@ -130,6 +130,9 @@ public class CastDiscoveryProvider implements DiscoveryProvider {
             @Override
             public void run() {
                 mMediaRouter.addCallback( mMediaRouteSelector, mMediaRouterCallback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY );
+                RouteInfo mSelectedRoute = mMediaRouter.getSelectedRoute();
+                if ( ( mSelectedRoute != null ) && ( mSelectedRoute.matchesSelector( mMediaRouteSelector ) ) )
+                    mMediaRouterCallback.onRouteAdded( mMediaRouter, mSelectedRoute );
             }
         } );
     }
@@ -160,14 +163,9 @@ public class CastDiscoveryProvider implements DiscoveryProvider {
 
     private class MediaRouterCallback extends MediaRouter.Callback {
 
-        @Override
-        public void onRouteAdded( MediaRouter router, RouteInfo route ) {
-            super.onRouteAdded( router, route );
-
+        private void addOrUpdateRoute( MediaRouter router, RouteInfo route ) {
             CastDevice castDevice = CastDevice.getFromBundle( route.getExtras() );
             String uuid = castDevice.getDeviceId();
-
-            removedUUID.remove( uuid );
 
             ServiceDescription foundService = foundServices.get( uuid );
 
@@ -187,6 +185,12 @@ public class CastDiscoveryProvider implements DiscoveryProvider {
 
                 listUpdateFlag = true;
             } else {
+                foundService.setIpAddress( castDevice.getIpAddress().getHostAddress() );
+                foundService.setModelName( castDevice.getModelName() );
+                foundService.setModelNumber( castDevice.getDeviceVersion() );
+                foundService.setModelDescription( route.getDescription() );
+                foundService.setPort( castDevice.getServicePort() );
+
                 if ( !foundService.getFriendlyName().equals( castDevice.getFriendlyName() ) ) {
                     foundService.setFriendlyName( castDevice.getFriendlyName() );
                     listUpdateFlag = true;
@@ -207,40 +211,25 @@ public class CastDiscoveryProvider implements DiscoveryProvider {
         }
 
         @Override
+        public void onRouteAdded( MediaRouter router, RouteInfo route ) {
+            super.onRouteAdded( router, route );
+
+            CastDevice castDevice = CastDevice.getFromBundle( route.getExtras() );
+            String uuid = castDevice.getDeviceId();
+
+            removedUUID.remove( uuid );
+
+            addOrUpdateRoute( router, route );
+        }
+
+        @Override
         public void onRouteChanged( MediaRouter router, RouteInfo route ) {
             super.onRouteChanged( router, route );
 
             CastDevice castDevice = CastDevice.getFromBundle( route.getExtras() );
             String uuid = castDevice.getDeviceId();
 
-            ServiceDescription foundService = foundServices.get( uuid );
-
-            boolean isNew = foundService == null;
-            boolean listUpdateFlag = false;
-
-            if ( !isNew ) {
-                foundService.setIpAddress( castDevice.getIpAddress().getHostAddress() );
-                foundService.setModelName( castDevice.getModelName() );
-                foundService.setModelNumber( castDevice.getDeviceVersion() );
-                foundService.setModelDescription( route.getDescription() );
-                foundService.setPort( castDevice.getServicePort() );
-                foundService.setDevice( castDevice );
-
-                if ( !foundService.getFriendlyName().equals( castDevice.getFriendlyName() ) ) {
-                    foundService.setFriendlyName( castDevice.getFriendlyName() );
-                    listUpdateFlag = true;
-                }
-
-                foundService.setLastDetection( new Date().getTime() );
-
-                foundServices.put( uuid, foundService );
-
-                if ( listUpdateFlag ) {
-                    for ( DiscoveryProviderListener listenter : serviceListeners ) {
-                        listenter.onServiceAdded( CastDiscoveryProvider.this, foundService );
-                    }
-                }
-            }
+            addOrUpdateRoute( router, route );
         }
 
         @Override
