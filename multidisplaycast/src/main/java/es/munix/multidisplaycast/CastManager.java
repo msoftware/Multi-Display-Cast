@@ -407,9 +407,9 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
-    public void startControlsActivity() {
-        Intent i = new Intent( context, CastControlsActivity.class );
-        context.startActivity( i );
+    public void startControlsActivity( Activity activity, Class classToStart ) {
+        Intent i = new Intent( context, classToStart );
+        activity.startActivity( i );
     }
 
     private void unsetMediaControl() {

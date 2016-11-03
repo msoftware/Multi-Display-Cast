@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 
+import es.munix.multidisplaycast.CastControlsActivity;
 import es.munix.multidisplaycast.CastManager;
 import es.munix.multidisplaycast.interfaces.CastListener;
 import es.munix.multidisplaycast.interfaces.PlayStatusListener;
@@ -78,7 +79,8 @@ public class MainActivity extends AppCompatActivity implements CastListener, Pla
         switch( playStatus ) {
             case STATUS_START_PLAYING:
                 videoButton.setText( "Detener video" );
-                CastManager.getInstance().startControlsActivity();
+                CastManager.getInstance()
+                        .startControlsActivity( this, CastControlsActivity.class ); //Puedes overridear esta actividad para tener algún control extra
                 break;
 
             case STATUS_FINISHED:
