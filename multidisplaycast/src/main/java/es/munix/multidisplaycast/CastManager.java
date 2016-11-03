@@ -235,29 +235,14 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     @Override
     public boolean onMenuItemClick( MenuItem menuItem ) {
         if ( isConnected() ) {
-            if ( mMediaControl != null ) {
-                connectableDevice.getCapability( MediaPlayer.class )
-                        .getMediaInfo( new MediaPlayer.MediaInfoListener() {
-                            @Override
-                            public void onSuccess( MediaInfo object ) {
-                                String image = null;
-                                if ( object.getImages() != null && object.getImages().size() > 0 ) {
-                                    image = object.getImages().get( 0 ).getUrl();
-                                }
-                                showDisconnectAlert( object.getTitle(), "Dejar de enviar contenido", image );
-                            }
-
-                            @Override
-                            public void onError( ServiceCommandError error ) {
-                                if ( !TextUtils.isEmpty( mediaObject.getTitle() ) && !TextUtils.isEmpty( mediaObject
-                                        .getImage() ) ) {
-                                    showDisconnectAlert( mediaObject.getTitle(), "Dejar de enviar contenido", mediaObject
-                                            .getImage() );
-                                } else {
-                                    showDisconnectAlert( "No se está reproduciendo contenido", "Desconectar", null );
-                                }
-                            }
-                        } );
+            if ( mMediaControl != null && mediaObject != null ) {
+                if ( !TextUtils.isEmpty( mediaObject.getTitle() ) && !TextUtils.isEmpty( mediaObject
+                        .getImage() ) ) {
+                    showDisconnectAlert( mediaObject.getTitle(), "Dejar de enviar contenido", mediaObject
+                            .getImage() );
+                } else {
+                    showDisconnectAlert( "No se está reproduciendo contenido", "Desconectar", null );
+                }
             } else {
                 showDisconnectAlert( "No se está reproduciendo contenido", "Desconectar", null );
             }
@@ -649,6 +634,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                     playStatusListener.getValue()
                             .onPlayStatusChanged( PlayStatusListener.STATUS_FINISHED );
                 }
+                mediaObject = null;
                 break;
 
             case Buffering:
