@@ -478,21 +478,11 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     public void stop() {
         if ( isConnected() && mMediaControl != null ) {
             stopUpdating();
-            mMediaControl.stop( new ResponseListener<Object>() {
-
-                @Override
-                public void onSuccess( Object response ) {
-                    unsetMediaControl();
-                }
-
-                @Override
-                public void onError( ServiceCommandError error ) {
-                    unsetMediaControl();
-                }
-            } );
+            mMediaControl.stop( null );
         } else {
             NotificationsHelper.cancelNotification( context );
         }
+        unsetMediaControl();
     }
 
     public Boolean isConnected() {
