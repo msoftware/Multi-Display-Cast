@@ -38,6 +38,7 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:+'
     compile project(path: ':multidisplaycast')
+    //compile 'com.github.munix:Multi-Display-Cast:2.0'
     compile('com.crashlytics.sdk.android:crashlytics:2.6.5@aar') {
         transitive = true;
     }
