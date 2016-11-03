@@ -1,5 +1,9 @@
 # Multi-Display-Cast
 
-Un wrapper para una integración sencilla de Connect SDK (https://github.com/ConnectSDK/Connect-SDK-Android)
+[![](https://jitpack.io/v/munix/Multi-Display-Cast.svg)](https://jitpack.io/#munix/Multi-Display-Cast)
 
-Demo apk: https://github.com/munix/Multi-Display-Cast/blob/master/Multicast-code-2(2.0)-date-03-11-2016.apk?raw=true
+Un wrapper para una integración sencilla de de una versión modificada y con muchos errores corregidos de [Connect SDK](http://www.svlconnectsdk.com/)
+
+### Ejemplo
+
+Para comprobar cómo se usa puedes descargarte el [ejemplo](https://github.com/munix/Multi-Display-Cast/tree/master/demo) o probar el [APK](https://github.com/munix/Multi-Display-Cast/raw/master/Multicast-code-2(2.0)-date-03-11-2016.apk)
