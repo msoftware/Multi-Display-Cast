@@ -26,7 +26,7 @@
         android:layout_below="@+id/textView"
         android:layout_marginTop="8dp"
         android:gravity="center_horizontal"
-        android:text="Esta es una aplicación de ejemplo para envío multimedia a una pantalla remota. Cuando terminemos las pruebas se integrará este nuevo método a las aplicaciones principales."
+        android:text="Esta es una aplicación de ejemplo para envío multimedia a una pantalla remota."
         android:textColor="@color/castPrimaryColor"/>
 
     <RelativeLayout

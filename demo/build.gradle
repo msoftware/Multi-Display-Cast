@@ -13,8 +13,8 @@ android {
         applicationId "es.munix.multicast"
         minSdkVersion 15
         targetSdkVersion 19
-        versionCode 2
-        versionName "2.0"
+        versionCode 3
+        versionName "2.01"
     }
     buildTypes {
         release {
