@@ -36,14 +36,16 @@ import com.connectsdk.service.capability.MediaControl;
 import com.connectsdk.service.capability.MediaPlayer;
 import com.connectsdk.service.capability.listeners.ResponseListener;
 import com.connectsdk.service.command.ServiceCommandError;
-import com.connectsdk.service.sessions.LaunchSession;
-
-import org.json.JSONException;
+import com.google.gson.Gson;
 
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import es.munix.multidisplaycast.interfaces.CastListener;
+import es.munix.multidisplaycast.interfaces.PlayStatusListener;
 import es.munix.multidisplaycast.services.CastReceiver;
 import es.munix.multidisplaycast.services.DummyService;
 
@@ -51,26 +53,42 @@ import es.munix.multidisplaycast.services.DummyService;
  * Created by munix on 1/11/16.
  */
 
-public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuItemClickListener, ConnectableDeviceListener {
+public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuItemClickListener, ConnectableDeviceListener, MediaControl.PlayStateListener {
 
     private static final boolean ENABLE_LOG = true;
     private static final String TAG = "CastInstance";
     private static final String SHARED_PREFS = "MultiCast";
     private static final int NOTIFICATION_ID = 800;
     private static CastManager instance;
-    //Multimedia
-    String title, icon;
     private Context context;
+
+    //Multimedia
     private DiscoveryManager discoveryManager;
     private MenuItem castMenuItem;
     private ConnectableDevice connectableDevice;
-    private CastListener listener;
+    private CastListener castListener;
+    private PlayStatusListener playStatusListener;
     private MediaControl mMediaControl;
+
     //Unset at destroy
     private Activity activity;
+
+    //Dialogos
     private AlertDialog connectToCastDialog;
     private AlertDialog pairingAlertDialog;
     private AlertDialog pairingCodeDialog;
+
+    //Listeners no implemetables
+    private MediaControl.DurationListener durationListener;
+    private MediaControl.PositionListener positionListener;
+
+    //Otros
+    private Timer refreshTimer;
+    private long totalDuration = -1;
+    private long currentPosition = 0;
+    private String title;
+    private String icon;
+
 
     public static CastManager getInstance() {
         if ( instance == null ) {
@@ -103,8 +121,12 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
-    public void setListener( CastListener listener ) {
-        this.listener = listener;
+    public void setCastListener( CastListener listener ) {
+        this.castListener = listener;
+    }
+
+    public void setPlayStatusListener( PlayStatusListener listener ) {
+        this.playStatusListener = listener;
     }
 
     public void registerForActivity( Activity activity, Menu menu, int menuId ) {
@@ -163,6 +185,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
     public void disconnect() {
         stop();
+        stopUpdating();
         connectableDevice.disconnect();
         setRecentDeviceId( "" );
         castMenuItem.setIcon( R.drawable.cast_off );
@@ -352,9 +375,10 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                             showNotification( title, subtitle, icon );
 
                             mMediaControl = object.mediaControl;
+                            mMediaControl.subscribePlayState( CastManager.this );
 
 
-                            try {
+                            /*try {
                                 final LaunchSession session = LaunchSession.launchSessionFromJSONObject( object.launchSession
                                         .toJSONObject() );
 
@@ -381,22 +405,18 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                                 }, 2000 );
                             } catch ( JSONException e ) {
                                 e.printStackTrace();
-                            }
+                            }*/
 
-                            if ( listener != null ) {
-                                listener.onPlayStart();
+                            if ( playStatusListener != null ) {
+                                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_PLAYING );
                             }
 
                             Intent i = new Intent( context, DummyService.class );
                             i.addCategory( "DummyServiceControl" );
                             context.startService( i );
 
-                            /*castManager.launchSession = object.launchSession;
-                            castManager.
-                            castManager.mPlaylistControl = object.playlistControl;
-                            castManager.isPlaying = true;
+                            createListeners();
                             startUpdating();
-                            enableControls();*/
                         }
 
                         @Override
@@ -412,8 +432,10 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private void unsetMediaControl() {
         mMediaControl = null;
         cancelNotification();
-        if ( listener != null ) {
-            listener.onPlayStop();
+        if ( castListener != null ) {
+            if ( playStatusListener != null ) {
+                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
+            }
         }
         icon = null;
         title = null;
@@ -465,16 +487,16 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             connectableDevice = device;
             setRecentDeviceId( device.getId() );
             castMenuItem.setIcon( R.drawable.cast_on );
-            if ( listener != null ) {
-                listener.isConnected();
+            if ( castListener != null ) {
+                castListener.isConnected();
             }
         }
     }
 
     @Override
     public void onDeviceDisconnected( ConnectableDevice device ) {
-        if ( listener != null ) {
-            listener.isDisconnected();
+        if ( castListener != null ) {
+            castListener.isDisconnected();
         }
     }
 
@@ -498,7 +520,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
     @Override
     public void onCapabilityUpdated( ConnectableDevice device, List<String> added, List<String> removed ) {
-        log( "onCapabilityUpdated " );
+        log( "onCapabilityUpdated " + new Gson().toJson( added ) );
     }
 
     @Override
@@ -532,7 +554,115 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             pairingCodeDialog = null;
         }
 
+        positionListener = null;
+        durationListener = null;
+        stopUpdating();
 
         activity = null;
     }
+
+    private void stopUpdating() {
+        if ( refreshTimer == null )
+            return;
+
+        refreshTimer.cancel();
+        refreshTimer = null;
+    }
+
+    private void startUpdating() {
+        stopUpdating();
+        refreshTimer = new Timer();
+        refreshTimer.schedule( new TimerTask() {
+
+            @Override
+            public void run() {
+                try {
+                    mMediaControl.getPosition( positionListener );
+
+                    mMediaControl.getDuration( durationListener );
+                } catch ( Exception e ) {
+                    if ( playStatusListener != null ) {
+                        playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_NOT_SUPPORT_LISTENER );
+                        stopUpdating();
+                    }
+                }
+            }
+        }, 0, TimeUnit.SECONDS.toMillis( 1 ) );
+    }
+
+    //Control de reproducción del video en la pantalla remota
+    @Override
+    public void onSuccess( MediaControl.PlayStateStatus playState ) {
+        switch( playState ) {
+            case Playing:
+                log( "PlayStateStatus: playing" );
+                break;
+
+            case Finished:
+                log( "PlayStateStatus: finished" );
+                break;
+
+            case Buffering:
+                log( "PlayStateStatus: buffering" );
+                break;
+
+            case Idle:
+                log( "PlayStateStatus: idle" );
+                break;
+
+            case Paused:
+                log( "PlayStateStatus: paused" );
+                break;
+
+            case Unknown:
+                log( "PlayStateStatus: unknown" );
+                break;
+        }
+    }
+
+    private void evaluatePositionAndDuration() {
+        if ( playStatusListener != null ) {
+
+            playStatusListener.onTotalDurationObtained( totalDuration );
+            playStatusListener.onPositionChanged( currentPosition );
+
+            if ( totalDuration > 0 && currentPosition >= totalDuration ) {
+                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_FINISHED );
+            }
+        }
+    }
+
+    private void createListeners() {
+        positionListener = new MediaControl.PositionListener() {
+
+            @Override
+            public void onError( ServiceCommandError error ) {
+                error.printStackTrace();
+            }
+
+            @Override
+            public void onSuccess( Long position ) {
+                currentPosition = position;
+                evaluatePositionAndDuration();
+            }
+        };
+        durationListener = new MediaControl.DurationListener() {
+
+            @Override
+            public void onError( ServiceCommandError error ) {
+                error.printStackTrace();
+            }
+
+            @Override
+            public void onSuccess( Long duration ) {
+                totalDuration = duration;
+                evaluatePositionAndDuration();
+            }
+        };
+    }
+
+    @Override
+    public void onError( ServiceCommandError error ) {
+    }
+    //////////////////////////////////////////////////////////////
 }

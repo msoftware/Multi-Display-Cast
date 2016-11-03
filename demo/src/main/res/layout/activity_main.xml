@@ -28,4 +28,39 @@
         android:enabled="false"
         android:onClick="playVideo"
         android:text="Reproducir video"/>
+
+    <TextView
+        android:id="@+id/durationLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/videoButton"
+        android:layout_marginRight="8dp"
+        android:text="Duración: " android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/videoButton" android:layout_toEndOf="@+id/durationLabel"
+        android:layout_toRightOf="@+id/durationLabel" tools:text="00:00"/>
+
+
+    <TextView
+        android:id="@+id/positionLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/durationLabel"
+        android:layout_marginRight="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Posición: " android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/position"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/durationLabel"
+        android:layout_marginTop="8dp"
+        android:layout_toRightOf="@+id/positionLabel" tools:text="00:00"/>
+
+
 </RelativeLayout>

@@ -9,8 +9,4 @@ public interface CastListener {
     void isConnected();
 
     void isDisconnected();
-
-    void onPlayStart();
-
-    void onPlayStop();
 }
