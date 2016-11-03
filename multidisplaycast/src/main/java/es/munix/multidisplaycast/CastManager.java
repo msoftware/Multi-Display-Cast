@@ -12,7 +12,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AlertDialog;
-import android.text.InputType;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,6 +22,7 @@ import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.connectsdk.core.MediaInfo;
@@ -35,9 +36,16 @@ import com.connectsdk.service.capability.MediaControl;
 import com.connectsdk.service.capability.MediaPlayer;
 import com.connectsdk.service.capability.listeners.ResponseListener;
 import com.connectsdk.service.command.ServiceCommandError;
+import com.connectsdk.service.sessions.LaunchSession;
+
+import org.json.JSONException;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import es.munix.multidisplaycast.interfaces.CastListener;
+import es.munix.multidisplaycast.services.CastReceiver;
+import es.munix.multidisplaycast.services.DummyService;
 
 /**
  * Created by munix on 1/11/16.
@@ -50,13 +58,14 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private static final String SHARED_PREFS = "MultiCast";
     private static final int NOTIFICATION_ID = 800;
     private static CastManager instance;
+    //Multimedia
+    String title, icon;
     private Context context;
     private DiscoveryManager discoveryManager;
     private MenuItem castMenuItem;
     private ConnectableDevice connectableDevice;
     private CastListener listener;
     private MediaControl mMediaControl;
-
     //Unset at destroy
     private Activity activity;
     private AlertDialog connectToCastDialog;
@@ -159,6 +168,36 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         castMenuItem.setIcon( R.drawable.cast_off );
     }
 
+    private void showDisconnectAlert( String title, String image ) {
+        View customView = View.inflate( activity, R.layout.cast_disconnect, null );
+        final TextView deviceName = (TextView) customView.findViewById( R.id.deviceName );
+        if ( connectableDevice.getFriendlyName() != null ) {
+            deviceName.setText( connectableDevice.getFriendlyName() );
+        } else {
+            deviceName.setText( connectableDevice.getModelName() );
+        }
+
+        final TextView mediaTitle = (TextView) customView.findViewById( R.id.mediaTitle );
+        mediaTitle.setText( title );
+
+        final ImageView mediaImage = (ImageView) customView.findViewById( R.id.mediaImage );
+        if ( image != null ) {
+            Glide.with( activity ).load( image ).into( mediaImage );
+        } else {
+            mediaImage.setVisibility( View.GONE );
+        }
+
+        new AlertDialog.Builder( activity ).setView( customView )
+                .setPositiveButton( "Dejar de enviar contenido", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick( DialogInterface dialogInterface, int i ) {
+                        dialogInterface.cancel();
+                        disconnect();
+                    }
+                } )
+                .show();
+    }
+
     @Override
     public boolean onMenuItemClick( MenuItem menuItem ) {
         if ( isConnected() ) {
@@ -167,41 +206,20 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                         .getMediaInfo( new MediaPlayer.MediaInfoListener() {
                             @Override
                             public void onSuccess( MediaInfo object ) {
-                                View customView = View.inflate( activity, R.layout.cast_disconnect, null );
-                                final TextView deviceName = (TextView) customView.findViewById( R.id.deviceName );
-                                if ( connectableDevice.getFriendlyName() != null ) {
-                                    deviceName.setText( connectableDevice.getFriendlyName() );
-                                } else {
-                                    deviceName.setText( connectableDevice.getModelName() );
-                                }
-
-                                final TextView mediaTitle = (TextView) customView.findViewById( R.id.mediaTitle );
-                                mediaTitle.setText( object.getTitle() );
-
-                                final ImageView mediaImage = (ImageView) customView.findViewById( R.id.mediaImage );
+                                String image = null;
                                 if ( object.getImages() != null && object.getImages().size() > 0 ) {
-                                    Glide.with( activity )
-                                            .load( object.getImages().get( 0 ).getUrl() )
-                                            .into( mediaImage );
-                                } else {
-                                    mediaImage.setVisibility( View.GONE );
+                                    image = object.getImages().get( 0 ).getUrl();
                                 }
-
-                                new AlertDialog.Builder( activity ).setView( customView )
-                                        .setPositiveButton( "Dejar de enviar contenido", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick( DialogInterface dialogInterface, int i ) {
-                                                dialogInterface.cancel();
-                                                disconnect();
-                                            }
-                                        } )
-                                        .show();
+                                showDisconnectAlert( object.getTitle(), image );
                             }
 
                             @Override
                             public void onError( ServiceCommandError error ) {
-                                //Media Info is null
-                                disconnect();
+                                if ( !TextUtils.isEmpty( title ) && !TextUtils.isEmpty( icon ) ) {
+                                    showDisconnectAlert( title, icon );
+                                } else {
+                                    showDisconnectAlert( "Sin información multimedia", null );
+                                }
                             }
                         } );
             } else {
@@ -233,14 +251,16 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                     } )
                     .create();
 
-            final EditText input = new EditText( activity );
-            input.setInputType( InputType.TYPE_CLASS_TEXT );
+            View v = View.inflate( activity, R.layout.input_code_dialog, null );
+            final EditText input = (EditText) v.findViewById( R.id.input );
+            input.setMaxLines( 1 );
+
 
             final InputMethodManager imm = (InputMethodManager) activity.getApplicationContext()
                     .getSystemService( Context.INPUT_METHOD_SERVICE );
 
             pairingCodeDialog = new AlertDialog.Builder( activity ).setTitle( "Ingrese el código que ve en la TV" )
-                    .setView( input )
+                    .setView( v )
                     .setPositiveButton( android.R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick( DialogInterface arg0, int arg1 ) {
@@ -326,46 +346,46 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
                         public void onSuccess( MediaPlayer.MediaLaunchObject object ) {
 
+                            CastManager.this.title = title;
+                            CastManager.this.icon = icon;
+
                             showNotification( title, subtitle, icon );
 
                             mMediaControl = object.mediaControl;
 
-                            /*try {
-                                log( object.launchSession.toJSONObject().toString() );
 
-                                LaunchSession session = LaunchSession.launchSessionFromJSONObject( object.launchSession
+                            try {
+                                final LaunchSession session = LaunchSession.launchSessionFromJSONObject( object.launchSession
                                         .toJSONObject() );
-                                connectableDevice.getCapability( MediaPlayer.class )
-                                        .closeMedia( session, new ResponseListener<Object>() {
-                                            @Override
-                                            public void onError( ServiceCommandError error ) {
 
-                                            }
+                                new Handler().postDelayed( new Runnable() {
+                                    @Override
+                                    public void run() {
 
-                                            @Override
-                                            public void onSuccess( Object object ) {
+                                        Toast.makeText( activity, "desconectar desde sesión", Toast.LENGTH_LONG )
+                                                .show();
 
-                                            }
-                                        } );
+                                        connectableDevice.getCapability( MediaPlayer.class )
+                                                .closeMedia( session, new ResponseListener<Object>() {
+                                                    @Override
+                                                    public void onError( ServiceCommandError error ) {
+
+                                                    }
+
+                                                    @Override
+                                                    public void onSuccess( Object object ) {
+
+                                                    }
+                                                } );
+                                    }
+                                }, 2000 );
                             } catch ( JSONException e ) {
                                 e.printStackTrace();
-                            }*/
+                            }
 
                             if ( listener != null ) {
                                 listener.onPlayStart();
                             }
-
-                            mMediaControl.getPlayState( new MediaControl.PlayStateListener() {
-                                @Override
-                                public void onSuccess( MediaControl.PlayStateStatus object ) {
-
-                                }
-
-                                @Override
-                                public void onError( ServiceCommandError error ) {
-
-                                }
-                            } );
 
                             Intent i = new Intent( context, DummyService.class );
                             i.addCategory( "DummyServiceControl" );
@@ -381,15 +401,22 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
                         @Override
                         public void onError( ServiceCommandError error ) {
-                            /*if ( castManager.launchSession != null ) {
-                                castManager.launchSession.close( null );
-                                castManager.launchSession = null;
-                                castManager.isPlaying = false;
-                                stopUpdating();
-                            }*/
+                            stop();
+                            Toast.makeText( activity, "Contenido no compatible", Toast.LENGTH_LONG )
+                                    .show();
                         }
                     } );
         }
+    }
+
+    private void unsetMediaControl() {
+        mMediaControl = null;
+        cancelNotification();
+        if ( listener != null ) {
+            listener.onPlayStop();
+        }
+        icon = null;
+        title = null;
     }
 
     public void stop() {
@@ -398,18 +425,14 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
                 @Override
                 public void onSuccess( Object response ) {
-                    mMediaControl = null;
+                    unsetMediaControl();
                 }
 
                 @Override
                 public void onError( ServiceCommandError error ) {
-                    mMediaControl = null;
+                    unsetMediaControl();
                 }
             } );
-            cancelNotification();
-            if ( listener != null ) {
-                listener.onPlayStop();
-            }
         }
     }
 
@@ -421,34 +444,6 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         if ( discoveryManager != null ) {
             setCastMenuVisible( discoveryManager.getAllDevices().size() > 0 );
         }
-    }
-
-    public void onDestroy() {
-        cancelNotification();
-        if ( connectToCastDialog != null ) {
-            connectToCastDialog.cancel();
-            connectToCastDialog = null;
-        }
-        if ( connectableDevice != null ) {
-            connectableDevice.disconnect();
-            connectableDevice.removeListener( this );
-            connectableDevice = null;
-        }
-        if ( discoveryManager != null ) {
-            discoveryManager.removeListener( this );
-        }
-
-        if ( pairingAlertDialog != null ) {
-            pairingAlertDialog.cancel();
-            pairingAlertDialog = null;
-        }
-        if ( pairingCodeDialog != null ) {
-            pairingCodeDialog.cancel();
-            pairingCodeDialog = null;
-        }
-
-
-        activity = null;
     }
 
     public String getRecentDeviceId() {
@@ -509,5 +504,35 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     @Override
     public void onConnectionFailed( ConnectableDevice device, ServiceCommandError error ) {
         Log.e( TAG, "onConnectionFailed" );
+    }
+
+    public void onDestroy() {
+        title = null;
+        icon = null;
+        cancelNotification();
+        if ( connectToCastDialog != null ) {
+            connectToCastDialog.cancel();
+            connectToCastDialog = null;
+        }
+        if ( connectableDevice != null ) {
+            connectableDevice.disconnect();
+            connectableDevice.removeListener( this );
+            connectableDevice = null;
+        }
+        if ( discoveryManager != null ) {
+            discoveryManager.removeListener( this );
+        }
+
+        if ( pairingAlertDialog != null ) {
+            pairingAlertDialog.cancel();
+            pairingAlertDialog = null;
+        }
+        if ( pairingCodeDialog != null ) {
+            pairingCodeDialog.cancel();
+            pairingCodeDialog = null;
+        }
+
+
+        activity = null;
     }
 }

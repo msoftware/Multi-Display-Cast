@@ -1,4 +1,4 @@
-package es.munix.multidisplaycast;
+package es.munix.multidisplaycast.interfaces;
 
 /**
  * Created by munix on 1/11/16.

@@ -43,6 +43,7 @@ dependencies {
     compile 'com.android.support:support-v4:+'
     compile 'com.android.support:appcompat-v7:+'
     compile 'com.android.support:mediarouter-v7:+'
+    compile 'com.android.support:design:+'
     compile 'com.google.android.gms:play-services-cast:+'
 
     compile 'com.github.bumptech.glide:glide:3.6.0'

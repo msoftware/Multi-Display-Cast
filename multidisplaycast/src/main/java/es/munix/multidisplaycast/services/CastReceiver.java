@@ -1,9 +1,11 @@
-package es.munix.multidisplaycast;
+package es.munix.multidisplaycast.services;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+
+import es.munix.multidisplaycast.CastManager;
 
 /**
  * Created by munix on 2/11/16.

@@ -7,8 +7,8 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 
-import es.munix.multidisplaycast.CastListener;
 import es.munix.multidisplaycast.CastManager;
+import es.munix.multidisplaycast.interfaces.CastListener;
 
 public class MainActivity extends AppCompatActivity implements CastListener {
 
