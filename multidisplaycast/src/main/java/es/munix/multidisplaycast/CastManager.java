@@ -1,16 +1,11 @@
 package es.munix.multidisplaycast;
 
 import android.app.Activity;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.os.Handler;
-import android.os.Message;
-import android.support.v4.app.NotificationCompat;
+import android.os.Looper;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
@@ -36,18 +31,17 @@ import com.connectsdk.service.capability.MediaControl;
 import com.connectsdk.service.capability.MediaPlayer;
 import com.connectsdk.service.capability.listeners.ResponseListener;
 import com.connectsdk.service.command.ServiceCommandError;
-import com.google.gson.Gson;
 
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import es.munix.multidisplaycast.helpers.NotificationsHelper;
 import es.munix.multidisplaycast.interfaces.CastListener;
 import es.munix.multidisplaycast.interfaces.PlayStatusListener;
-import es.munix.multidisplaycast.services.CastReceiver;
-import es.munix.multidisplaycast.services.DummyService;
+import es.munix.multidisplaycast.services.AntiLeakActivityService;
+import es.munix.multidisplaycast.utils.StorageUtils;
 
 /**
  * Created by munix on 1/11/16.
@@ -57,8 +51,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
     private static final boolean ENABLE_LOG = true;
     private static final String TAG = "CastInstance";
-    private static final String SHARED_PREFS = "MultiCast";
-    private static final int NOTIFICATION_ID = 800;
+
     private static CastManager instance;
     private Context context;
 
@@ -69,6 +62,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private CastListener castListener;
     private PlayStatusListener playStatusListener;
     private MediaControl mMediaControl;
+    private Boolean isPaused = false;
 
     //Unset at destroy
     private Activity activity;
@@ -87,6 +81,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private long totalDuration = -1;
     private long currentPosition = 0;
     private String title;
+    private String subtitle;
     private String icon;
 
 
@@ -153,7 +148,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     @Override
     public void onDeviceAdded( DiscoveryManager manager, ConnectableDevice device ) {
         calculateMenuVisibility();
-        String mRecentDeviceId = getRecentDeviceId();
+        String mRecentDeviceId = StorageUtils.getRecentDeviceId( context );
 
         if ( mRecentDeviceId != null && connectableDevice == null ) {
             log( "reconnect from previous device" );
@@ -187,7 +182,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         stop();
         stopUpdating();
         connectableDevice.disconnect();
-        setRecentDeviceId( "" );
+        StorageUtils.setRecentDeviceId( context, "" );
         castMenuItem.setIcon( R.drawable.cast_off );
     }
 
@@ -307,53 +302,6 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         return false;
     }
 
-    public void cancelNotification() {
-        NotificationManager nMgr = (NotificationManager) context.getSystemService( Context.NOTIFICATION_SERVICE );
-        nMgr.cancel( NOTIFICATION_ID );
-    }
-
-    private void showNotification( String title, String subtitle, final String icon ) {
-        Intent disconnectIntent = new Intent( context, CastReceiver.class );
-        disconnectIntent.putExtra( "action", "disconnect" );
-        PendingIntent disconnectPendingIntent = PendingIntent.getBroadcast( context, NOTIFICATION_ID, disconnectIntent, 0 );
-
-        final NotificationCompat.Builder notification = new NotificationCompat.Builder( context ).setOngoing( true )
-                .setAutoCancel( false )
-                .setContentTitle( title )
-                .setContentText( subtitle )
-                .addAction( R.drawable.ic_stop_white_24dp, "Detener", disconnectPendingIntent )
-                .setSmallIcon( R.drawable.cast_on );
-
-        final Handler mHandler = new Handler() {
-            @Override
-            public void handleMessage( Message msg ) {
-                final NotificationManager notificationManager = (NotificationManager) context.getSystemService( Context.NOTIFICATION_SERVICE );
-                notificationManager.notify( NOTIFICATION_ID, notification.build() );
-            }
-        };
-
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    Bitmap largeIcon = Glide.
-                            with( context ).
-                            load( icon ).
-                            asBitmap().
-                            into( 100, 100 ).
-                            get();
-                    notification.setLargeIcon( largeIcon );
-                } catch ( InterruptedException e ) {
-                    e.printStackTrace();
-                } catch ( ExecutionException e ) {
-                    e.printStackTrace();
-                } catch ( OutOfMemoryError oom ) {
-                    oom.printStackTrace();
-                }
-                mHandler.sendEmptyMessage( 1 );
-            }
-        }.start();
-    }
 
     public void playMedia( String url, String mimeType, final String title, final String subtitle, final String icon ) {
         if ( isConnected() ) {
@@ -370,9 +318,10 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                         public void onSuccess( MediaPlayer.MediaLaunchObject object ) {
 
                             CastManager.this.title = title;
+                            CastManager.this.subtitle = subtitle;
                             CastManager.this.icon = icon;
 
-                            showNotification( title, subtitle, icon );
+                            NotificationsHelper.showNotification( context, title, subtitle, icon, false );
 
                             mMediaControl = object.mediaControl;
                             mMediaControl.subscribePlayState( CastManager.this );
@@ -411,7 +360,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                                 playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_PLAYING );
                             }
 
-                            Intent i = new Intent( context, DummyService.class );
+                            Intent i = new Intent( context, AntiLeakActivityService.class );
                             i.addCategory( "DummyServiceControl" );
                             context.startService( i );
 
@@ -431,18 +380,51 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
     private void unsetMediaControl() {
         mMediaControl = null;
-        cancelNotification();
-        if ( castListener != null ) {
-            if ( playStatusListener != null ) {
-                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
-            }
+        NotificationsHelper.cancelNotification( context );
+        if ( playStatusListener != null ) {
+            playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
         }
         icon = null;
         title = null;
     }
 
+    public void togglePause() {
+        if ( isConnected() && mMediaControl != null ) {
+            if ( !isPaused ) {
+                mMediaControl.pause( new ResponseListener<Object>() {
+                    @Override
+                    public void onError( ServiceCommandError error ) {
+
+                    }
+
+                    @Override
+                    public void onSuccess( Object object ) {
+                        isPaused = true;
+                        NotificationsHelper.showNotification( context, title, subtitle, icon, isPaused );
+                    }
+                } );
+            } else {
+                mMediaControl.play( new ResponseListener<Object>() {
+                    @Override
+                    public void onError( ServiceCommandError error ) {
+
+                    }
+
+                    @Override
+                    public void onSuccess( Object object ) {
+                        isPaused = false;
+                        NotificationsHelper.showNotification( context, title, subtitle, icon, isPaused );
+                    }
+                } );
+            }
+        } else {
+            NotificationsHelper.cancelNotification( context );
+        }
+    }
+
     public void stop() {
         if ( isConnected() && mMediaControl != null ) {
+            stopUpdating();
             mMediaControl.stop( new ResponseListener<Object>() {
 
                 @Override
@@ -455,6 +437,8 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                     unsetMediaControl();
                 }
             } );
+        } else {
+            NotificationsHelper.cancelNotification( context );
         }
     }
 
@@ -468,24 +452,13 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
-    public String getRecentDeviceId() {
-        SharedPreferences preferences = context.getSharedPreferences( SHARED_PREFS, Context.MODE_PRIVATE );
-        return preferences.getString( "recentDeviceId", "" );
-    }
-
-    public void setRecentDeviceId( String deviceId ) {
-        SharedPreferences preferences = context.getSharedPreferences( SHARED_PREFS, Context.MODE_PRIVATE );
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString( "recentDeviceId", deviceId );
-        editor.commit();
-    }
 
     @Override
     public void onDeviceReady( ConnectableDevice device ) {
         log( "onDeviceReady is connected " + device.isConnected() );
         if ( device.isConnected() ) {
             connectableDevice = device;
-            setRecentDeviceId( device.getId() );
+            StorageUtils.setRecentDeviceId( context, device.getId() );
             castMenuItem.setIcon( R.drawable.cast_on );
             if ( castListener != null ) {
                 castListener.isConnected();
@@ -520,7 +493,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
     @Override
     public void onCapabilityUpdated( ConnectableDevice device, List<String> added, List<String> removed ) {
-        log( "onCapabilityUpdated " + new Gson().toJson( added ) );
+        log( "onCapabilityUpdated" );
     }
 
     @Override
@@ -531,7 +504,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     public void onDestroy() {
         title = null;
         icon = null;
-        cancelNotification();
+        NotificationsHelper.cancelNotification( context );
         if ( connectToCastDialog != null ) {
             connectToCastDialog.cancel();
             connectToCastDialog = null;
@@ -578,16 +551,24 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             public void run() {
                 try {
                     mMediaControl.getPosition( positionListener );
-
                     mMediaControl.getDuration( durationListener );
                 } catch ( Exception e ) {
-                    if ( playStatusListener != null ) {
-                        playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_NOT_SUPPORT_LISTENER );
-                        stopUpdating();
-                    }
+                    sendNotSupportGetStatus();
                 }
             }
         }, 0, TimeUnit.SECONDS.toMillis( 1 ) );
+    }
+
+    private void sendNotSupportGetStatus() {
+        if ( playStatusListener != null ) {
+            new Handler( Looper.getMainLooper() ).post( new Runnable() {
+                @Override
+                public void run() {
+                    playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_NOT_SUPPORT_LISTENER );
+                    stopUpdating();
+                }
+            } );
+        }
     }
 
     //Control de reproducción del video en la pantalla remota
@@ -637,7 +618,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
             @Override
             public void onError( ServiceCommandError error ) {
-                error.printStackTrace();
+                sendNotSupportGetStatus();
             }
 
             @Override
@@ -650,7 +631,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
             @Override
             public void onError( ServiceCommandError error ) {
-                error.printStackTrace();
+                sendNotSupportGetStatus();
             }
 
             @Override

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 
 import es.munix.multidisplaycast.CastManager;
 
@@ -19,8 +20,12 @@ public class CastReceiver extends BroadcastReceiver {
         if ( extras != null ) {
             String action = extras.getString( "action" );
 
+            Log.v( "CastReceiver", "action " + action );
+
             if ( action.equals( "disconnect" ) ) {
                 CastManager.getInstance().stop();
+            } else if ( action.equals( "pause" ) ) {
+                CastManager.getInstance().togglePause();
             }
         }
     }

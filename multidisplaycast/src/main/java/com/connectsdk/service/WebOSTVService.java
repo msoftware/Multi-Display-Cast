@@ -1322,7 +1322,7 @@ public class WebOSTVService extends DeviceService implements Launcher, MediaCont
 
     @Override
     public void pause( ResponseListener<Object> listener ) {
-        String uri = "ssap://media.controls/pause";
+        String uri = "ssap://media.controls/togglePause";
         ServiceCommand<ResponseListener<Object>> request = new ServiceCommand<ResponseListener<Object>>( this, uri, null, true, listener );
 
         request.send();

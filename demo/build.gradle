@@ -22,6 +22,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            def formattedDate = new Date().format('dd-MM-yyyy')
+            def newName = output.outputFile.name
+            newName = newName.replace("demo-", "Multicast-")
+            newName = newName.replace("-release", "-code-" + versionCode + "(" + versionName + ")-date-" + formattedDate)
+            output.outputFile = new File(output.outputFile.parent, newName)
+        }
+    }
 }
 
 dependencies {

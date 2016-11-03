@@ -9,7 +9,7 @@
 
     <application>
 
-        <service android:name="es.munix.multidisplaycast.services.DummyService"
+        <service android:name="es.munix.multidisplaycast.services.AntiLeakActivityService"
                  android:enabled="true"
                  android:exported="false"
                  android:stopWithTask="false"/>

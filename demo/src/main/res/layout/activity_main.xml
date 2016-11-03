@@ -18,31 +18,51 @@
         android:gravity="center_horizontal"
         android:text="Antes de reproducir el video por favor conecta la aplicación a un dispositivo remoto compatible"/>
 
-    <Button
-        android:id="@+id/videoButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <RelativeLayout
+        android:id="@+id/buttonLayer"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
         android:layout_below="@+id/textView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="43dp"
-        android:enabled="false"
-        android:onClick="playVideo"
-        android:text="Reproducir video"/>
+        android:layout_marginTop="16dp"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/videoButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:enabled="false"
+            android:onClick="playVideo"
+            android:text="Reproducir video"/>
+
+        <ProgressBar
+            android:id="@+id/loader"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/videoButton" android:layout_alignTop="@+id/videoButton"
+            android:layout_centerHorizontal="true"/>
+
+    </RelativeLayout>
+
 
     <TextView
         android:id="@+id/durationLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/videoButton"
+        android:layout_below="@+id/buttonLayer"
         android:layout_marginRight="8dp"
+        android:layout_marginTop="16dp"
         android:text="Duración: " android:textStyle="bold"/>
 
     <TextView
         android:id="@+id/duration"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/videoButton" android:layout_toEndOf="@+id/durationLabel"
-        android:layout_toRightOf="@+id/durationLabel" tools:text="00:00"/>
+        android:layout_alignBottom="@+id/durationLabel"
+        android:layout_alignTop="@+id/durationLabel" android:layout_toEndOf="@+id/durationLabel"
+        android:layout_toRightOf="@+id/durationLabel"
+        tools:text="00:00"/>
 
 
     <TextView
@@ -58,9 +78,9 @@
         android:id="@+id/position"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/durationLabel"
-        android:layout_marginTop="8dp"
-        android:layout_toRightOf="@+id/positionLabel" tools:text="00:00"/>
+        android:layout_alignTop="@+id/positionLabel"
+        android:layout_toEndOf="@+id/durationLabel" android:layout_toRightOf="@+id/durationLabel"
+        tools:text="00:00"/>
 
 
 </RelativeLayout>

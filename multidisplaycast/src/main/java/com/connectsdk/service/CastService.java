@@ -243,7 +243,7 @@ public class CastService extends DeviceService implements MediaPlayer, MediaCont
 
                     Util.postSuccess( listener, null );
                 } catch ( Exception e ) {
-                    Util.postError( listener, new ServiceCommandError( 0, "Unable to pause", null ) );
+                    Util.postError( listener, new ServiceCommandError( 0, "Unable to togglePause", null ) );
                 }
             }
         };
