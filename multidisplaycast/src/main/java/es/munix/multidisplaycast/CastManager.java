@@ -75,6 +75,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private AlertDialog connectToCastDialog;
     private AlertDialog pairingAlertDialog;
     private AlertDialog pairingCodeDialog;
+    private AlertDialog disconnectDialog;
 
     //Listeners no implemetables
     private MediaControl.DurationListener durationListener;
@@ -196,7 +197,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         castMenuItem.setIcon( R.drawable.cast_off );
     }
 
-    private void showDisconnectAlert( String title, String image ) {
+    private void showDisconnectAlert( String title, final String disconnectLabel, String image ) {
         View customView = View.inflate( activity, R.layout.cast_disconnect, null );
         final TextView deviceName = (TextView) customView.findViewById( R.id.deviceName );
         if ( connectableDevice.getFriendlyName() != null ) {
@@ -215,15 +216,16 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             mediaImage.setVisibility( View.GONE );
         }
 
-        new AlertDialog.Builder( activity ).setView( customView )
-                .setPositiveButton( "Dejar de enviar contenido", new DialogInterface.OnClickListener() {
+        AlertDialog.Builder builder = new AlertDialog.Builder( activity ).setView( customView )
+                .setPositiveButton( disconnectLabel, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick( DialogInterface dialogInterface, int i ) {
                         dialogInterface.cancel();
                         disconnect();
                     }
-                } )
-                .show();
+                } );
+        disconnectDialog = builder.create();
+        disconnectDialog.show();
     }
 
     public MediaObject getMediaObject() {
@@ -242,21 +244,22 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                                 if ( object.getImages() != null && object.getImages().size() > 0 ) {
                                     image = object.getImages().get( 0 ).getUrl();
                                 }
-                                showDisconnectAlert( object.getTitle(), image );
+                                showDisconnectAlert( object.getTitle(), "Dejar de enviar contenido", image );
                             }
 
                             @Override
                             public void onError( ServiceCommandError error ) {
                                 if ( !TextUtils.isEmpty( mediaObject.getTitle() ) && !TextUtils.isEmpty( mediaObject
                                         .getImage() ) ) {
-                                    showDisconnectAlert( mediaObject.getTitle(), mediaObject.getImage() );
+                                    showDisconnectAlert( mediaObject.getTitle(), "Dejar de enviar contenido", mediaObject
+                                            .getImage() );
                                 } else {
-                                    showDisconnectAlert( "Sin información multimedia", null );
+                                    showDisconnectAlert( "No se está reproduciendo contenido", "Desconectar", null );
                                 }
                             }
                         } );
             } else {
-                disconnect();
+                showDisconnectAlert( "No se está reproduciendo contenido", "Desconectar", null );
             }
         } else {
             final DevicePicker devicePicker = new DevicePicker( activity );
@@ -395,6 +398,9 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
                             createListeners();
                             startUpdating();
+                            if ( disconnectDialog != null ) {
+                                disconnectDialog.cancel();
+                            }
                         }
 
                         @Override
@@ -550,6 +556,11 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         if ( connectToCastDialog != null ) {
             connectToCastDialog.cancel();
             connectToCastDialog = null;
+        }
+
+        if ( disconnectDialog != null ) {
+            disconnectDialog.cancel();
+            disconnectDialog = null;
         }
         if ( connectableDevice != null ) {
             connectableDevice.disconnect();
