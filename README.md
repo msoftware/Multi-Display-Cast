@@ -4,6 +4,15 @@
 
 Un wrapper para una integración sencilla de de una versión modificada y con muchos errores corregidos de [Connect SDK](http://www.svlconnectsdk.com/)
 
+#### Dispositivos compatibles
+
+  - Chromecast 1 y 2
+  - Apple TV
+  - webOS
+  - Roku
+  - Xbox one
+  - Muchas Smart TV
+
 ### Ejemplo
 
 Para comprobar cómo se usa puedes descargarte el [ejemplo](https://github.com/munix/Multi-Display-Cast/tree/master/demo) o probar el [APK](https://github.com/munix/Multi-Display-Cast/raw/master/demo.apk)
