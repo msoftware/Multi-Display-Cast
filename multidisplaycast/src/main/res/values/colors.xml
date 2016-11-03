@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="castPrimaryColor">#3F51B5</color>
+    <color name="castDisabledColor">#555</color>
+</resources>

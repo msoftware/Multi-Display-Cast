@@ -29,10 +29,13 @@ import com.connectsdk.discovery.DiscoveryManagerListener;
 import com.connectsdk.service.DeviceService;
 import com.connectsdk.service.capability.MediaControl;
 import com.connectsdk.service.capability.MediaPlayer;
+import com.connectsdk.service.capability.VolumeControl;
 import com.connectsdk.service.capability.listeners.ResponseListener;
 import com.connectsdk.service.command.ServiceCommandError;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import es.munix.multidisplaycast.helpers.NotificationsHelper;
 import es.munix.multidisplaycast.interfaces.CastListener;
 import es.munix.multidisplaycast.interfaces.PlayStatusListener;
+import es.munix.multidisplaycast.model.MediaObject;
 import es.munix.multidisplaycast.services.AntiLeakActivityService;
 import es.munix.multidisplaycast.utils.StorageUtils;
 
@@ -59,8 +63,8 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private DiscoveryManager discoveryManager;
     private MenuItem castMenuItem;
     private ConnectableDevice connectableDevice;
-    private CastListener castListener;
-    private PlayStatusListener playStatusListener;
+    private HashMap<String,CastListener> castListeners = new HashMap<>();
+    private HashMap<String,PlayStatusListener> playStatusListeners = new HashMap<>();
     private MediaControl mMediaControl;
     private Boolean isPaused = false;
 
@@ -80,9 +84,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     private Timer refreshTimer;
     private long totalDuration = -1;
     private long currentPosition = 0;
-    private String title;
-    private String subtitle;
-    private String icon;
+    private MediaObject mediaObject;
 
 
     public static CastManager getInstance() {
@@ -116,12 +118,20 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
-    public void setCastListener( CastListener listener ) {
-        this.castListener = listener;
+    public void setCastListener( String tag, CastListener listener ) {
+        this.castListeners.put( tag, listener );
     }
 
-    public void setPlayStatusListener( PlayStatusListener listener ) {
-        this.playStatusListener = listener;
+    public void setPlayStatusListener( String tag, PlayStatusListener listener ) {
+        this.playStatusListeners.put( tag, listener );
+    }
+
+    public void unsetCastListener( String tag ) {
+        this.castListeners.remove( tag );
+    }
+
+    public void unsetPlayStatusListener( String tag ) {
+        this.playStatusListeners.remove( tag );
     }
 
     public void registerForActivity( Activity activity, Menu menu, int menuId ) {
@@ -216,6 +226,10 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                 .show();
     }
 
+    public MediaObject getMediaObject() {
+        return mediaObject;
+    }
+
     @Override
     public boolean onMenuItemClick( MenuItem menuItem ) {
         if ( isConnected() ) {
@@ -233,8 +247,9 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
                             @Override
                             public void onError( ServiceCommandError error ) {
-                                if ( !TextUtils.isEmpty( title ) && !TextUtils.isEmpty( icon ) ) {
-                                    showDisconnectAlert( title, icon );
+                                if ( !TextUtils.isEmpty( mediaObject.getTitle() ) && !TextUtils.isEmpty( mediaObject
+                                        .getImage() ) ) {
+                                    showDisconnectAlert( mediaObject.getTitle(), mediaObject.getImage() );
                                 } else {
                                     showDisconnectAlert( "Sin información multimedia", null );
                                 }
@@ -303,7 +318,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     }
 
 
-    public void playMedia( String url, String mimeType, final String title, final String subtitle, final String icon ) {
+    public void playMedia( final String url, final String mimeType, final String title, final String subtitle, final String icon ) {
         if ( isConnected() ) {
 
             MediaInfo mediaInfo = new MediaInfo.Builder( url, mimeType ).setTitle( title )
@@ -311,15 +326,27 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                     .setIcon( icon )
                     .build();
 
-
             connectableDevice.getCapability( MediaPlayer.class )
                     .playMedia( mediaInfo, false, new MediaPlayer.LaunchListener() {
 
                         public void onSuccess( MediaPlayer.MediaLaunchObject object ) {
 
-                            CastManager.this.title = title;
-                            CastManager.this.subtitle = subtitle;
-                            CastManager.this.icon = icon;
+                            mediaObject = new MediaObject( title, subtitle, icon, mimeType, url );
+                            mediaObject.setCanChangeVolume( connectableDevice.hasCapability( VolumeControl.Volume_Set ) );
+                            if ( mediaObject.getCanChangeVolume() ) {
+                                connectableDevice.getCapability( VolumeControl.class )
+                                        .getVolume( new VolumeControl.VolumeListener() {
+                                            @Override
+                                            public void onSuccess( Float object ) {
+                                                mediaObject.setCurrentVolume( (int) ( object * 100.0f ) );
+                                            }
+
+                                            @Override
+                                            public void onError( ServiceCommandError error ) {
+                                                mediaObject.setCurrentVolume( 0 );
+                                            }
+                                        } );
+                            }
 
                             NotificationsHelper.showNotification( context, title, subtitle, icon, false );
 
@@ -356,8 +383,10 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
                                 e.printStackTrace();
                             }*/
 
-                            if ( playStatusListener != null ) {
-                                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_PLAYING );
+                            for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners
+                                    .entrySet() ) {
+                                playStatusListener.getValue()
+                                        .onPlayStatusChanged( PlayStatusListener.STATUS_START_PLAYING );
                             }
 
                             Intent i = new Intent( context, AntiLeakActivityService.class );
@@ -378,44 +407,68 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
+    public void startControlsActivity() {
+        Intent i = new Intent( context, CastControlsActivity.class );
+        context.startActivity( i );
+    }
+
     private void unsetMediaControl() {
         mMediaControl = null;
         NotificationsHelper.cancelNotification( context );
-        if ( playStatusListener != null ) {
-            playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
+        for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+            playStatusListener.getValue().onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
         }
-        icon = null;
-        title = null;
+        mediaObject = null;
+    }
+
+    public void setVolume( float volume ) {
+        if ( isConnected() && mMediaControl != null ) {
+            connectableDevice.getCapability( VolumeControl.class ).setVolume( volume, null );
+        }
+    }
+
+    public void seekTo( long position ) {
+        if ( isConnected() && mMediaControl != null ) {
+            mMediaControl.seek( position, new ResponseListener<Object>() {
+                @Override
+                public void onError( ServiceCommandError error ) {
+                    for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners
+                            .entrySet() ) {
+                        playStatusListener.getValue().onSuccessSeek();
+                    }
+                }
+
+                @Override
+                public void onSuccess( Object object ) {
+                    for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners
+                            .entrySet() ) {
+                        playStatusListener.getValue().onSuccessSeek();
+                    }
+                }
+            } );
+        }
     }
 
     public void togglePause() {
         if ( isConnected() && mMediaControl != null ) {
             if ( !isPaused ) {
-                mMediaControl.pause( new ResponseListener<Object>() {
-                    @Override
-                    public void onError( ServiceCommandError error ) {
-
-                    }
-
-                    @Override
-                    public void onSuccess( Object object ) {
-                        isPaused = true;
-                        NotificationsHelper.showNotification( context, title, subtitle, icon, isPaused );
-                    }
-                } );
+                mMediaControl.pause( null );
+                isPaused = true;
+                NotificationsHelper.showNotification( context, mediaObject.getTitle(), mediaObject.getSubtitle(), mediaObject
+                        .getImage(), isPaused );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_PAUSED );
+                }
             } else {
-                mMediaControl.play( new ResponseListener<Object>() {
-                    @Override
-                    public void onError( ServiceCommandError error ) {
-
-                    }
-
-                    @Override
-                    public void onSuccess( Object object ) {
-                        isPaused = false;
-                        NotificationsHelper.showNotification( context, title, subtitle, icon, isPaused );
-                    }
-                } );
+                mMediaControl.play( null );
+                isPaused = false;
+                NotificationsHelper.showNotification( context, mediaObject.getTitle(), mediaObject.getSubtitle(), mediaObject
+                        .getImage(), isPaused );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_RESUME_PAUSE );
+                }
             }
         } else {
             NotificationsHelper.cancelNotification( context );
@@ -460,16 +513,16 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             connectableDevice = device;
             StorageUtils.setRecentDeviceId( context, device.getId() );
             castMenuItem.setIcon( R.drawable.cast_on );
-            if ( castListener != null ) {
-                castListener.isConnected();
+            for ( Map.Entry<String,CastListener> castListener : castListeners.entrySet() ) {
+                castListener.getValue().isConnected();
             }
         }
     }
 
     @Override
     public void onDeviceDisconnected( ConnectableDevice device ) {
-        if ( castListener != null ) {
-            castListener.isDisconnected();
+        for ( Map.Entry<String,CastListener> castListener : castListeners.entrySet() ) {
+            castListener.getValue().isDisconnected();
         }
     }
 
@@ -502,8 +555,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     }
 
     public void onDestroy() {
-        title = null;
-        icon = null;
+        mediaObject = null;
         NotificationsHelper.cancelNotification( context );
         if ( connectToCastDialog != null ) {
             connectToCastDialog.cancel();
@@ -531,6 +583,8 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         durationListener = null;
         stopUpdating();
 
+        castListeners.clear();
+        playStatusListeners.clear();
         activity = null;
     }
 
@@ -560,12 +614,16 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
     }
 
     private void sendNotSupportGetStatus() {
-        if ( playStatusListener != null ) {
+        if ( playStatusListeners.size() > 0 ) {
+            mediaObject.setIsSeekable( false );
             new Handler( Looper.getMainLooper() ).post( new Runnable() {
                 @Override
                 public void run() {
-                    playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_NOT_SUPPORT_LISTENER );
-                    stopUpdating();
+                    for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners
+                            .entrySet() ) {
+                        playStatusListener.getValue()
+                                .onPlayStatusChanged( PlayStatusListener.STATUS_NOT_SUPPORT_LISTENER );
+                    }
                 }
             } );
         }
@@ -577,10 +635,19 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         switch( playState ) {
             case Playing:
                 log( "PlayStateStatus: playing" );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_START_PLAYING );
+                }
                 break;
 
             case Finished:
                 log( "PlayStateStatus: finished" );
+                NotificationsHelper.cancelNotification( context );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_FINISHED );
+                }
                 break;
 
             case Buffering:
@@ -589,10 +656,18 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
 
             case Idle:
                 log( "PlayStateStatus: idle" );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_STOPPED );
+                }
                 break;
 
             case Paused:
                 log( "PlayStateStatus: paused" );
+                for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+                    playStatusListener.getValue()
+                            .onPlayStatusChanged( PlayStatusListener.STATUS_PAUSED );
+                }
                 break;
 
             case Unknown:
@@ -601,15 +676,11 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
         }
     }
 
-    private void evaluatePositionAndDuration() {
-        if ( playStatusListener != null ) {
-
-            playStatusListener.onTotalDurationObtained( totalDuration );
-            playStatusListener.onPositionChanged( currentPosition );
-
-            if ( totalDuration > 0 && currentPosition >= totalDuration ) {
-                playStatusListener.onPlayStatusChanged( PlayStatusListener.STATUS_FINISHED );
-            }
+    private void notificatePositionAndDuration() {
+        for ( Map.Entry<String,PlayStatusListener> playStatusListener : playStatusListeners.entrySet() ) {
+            playStatusListener.getValue().onTotalDurationObtained( totalDuration );
+            playStatusListener.getValue().onPositionChanged( currentPosition );
+            playStatusListener.getValue().onPlayStatusChanged( PlayStatusListener.STATUS_PLAYING );
         }
     }
 
@@ -624,7 +695,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             @Override
             public void onSuccess( Long position ) {
                 currentPosition = position;
-                evaluatePositionAndDuration();
+                notificatePositionAndDuration();
             }
         };
         durationListener = new MediaControl.DurationListener() {
@@ -637,7 +708,7 @@ public class CastManager implements DiscoveryManagerListener, MenuItem.OnMenuIte
             @Override
             public void onSuccess( Long duration ) {
                 totalDuration = duration;
-                evaluatePositionAndDuration();
+                notificatePositionAndDuration();
             }
         };
     }

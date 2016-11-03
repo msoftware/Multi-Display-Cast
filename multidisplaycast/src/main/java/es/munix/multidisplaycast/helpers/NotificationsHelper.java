@@ -13,6 +13,7 @@ import com.bumptech.glide.Glide;
 
 import java.util.concurrent.ExecutionException;
 
+import es.munix.multidisplaycast.CastControlsActivity;
 import es.munix.multidisplaycast.R;
 import es.munix.multidisplaycast.services.CastReceiver;
 
@@ -35,8 +36,13 @@ public class NotificationsHelper {
                 .setAutoCancel( false )
                 .setContentTitle( title )
                 .setContentText( subtitle )
-
                 .setSmallIcon( R.drawable.cast_on );
+
+
+        Intent castActivityIntent = new Intent( context, CastControlsActivity.class );
+        PendingIntent castActivityPendingIntent = PendingIntent.getActivity( context, NOTIFICATION_ID, castActivityIntent, 0 );
+        notification.setContentIntent( castActivityPendingIntent );
+
 
         Intent disconnectIntent = new Intent( context, CastReceiver.class );
         disconnectIntent.putExtra( "action", "disconnect" );

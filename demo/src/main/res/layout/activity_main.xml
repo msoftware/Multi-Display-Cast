@@ -16,13 +16,24 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:text="Antes de reproducir el video por favor conecta la aplicación a un dispositivo remoto compatible"/>
+        android:text="Antes de reproducir el video por favor conecta la aplicación a un dispositivo remoto compatible tocando el icono situado a la derecha en la barra azul. Para desconectar vuelve a tocar el mismo icono."
+        android:textColor="#000"/>
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/textView"
+        android:layout_marginTop="8dp"
+        android:gravity="center_horizontal"
+        android:text="Esta es una aplicación de ejemplo para envío multimedia a una pantalla remota. Cuando terminemos las pruebas se integrará este nuevo método a las aplicaciones principales."
+        android:textColor="@color/castPrimaryColor"/>
 
     <RelativeLayout
         android:id="@+id/buttonLayer"
         android:layout_width="match_parent"
         android:layout_height="70dp"
-        android:layout_below="@+id/textView"
+        android:layout_below="@+id/textView2"
         android:layout_marginTop="16dp"
         android:gravity="center_vertical">
 
@@ -44,43 +55,5 @@
             android:layout_centerHorizontal="true"/>
 
     </RelativeLayout>
-
-
-    <TextView
-        android:id="@+id/durationLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/buttonLayer"
-        android:layout_marginRight="8dp"
-        android:layout_marginTop="16dp"
-        android:text="Duración: " android:textStyle="bold"/>
-
-    <TextView
-        android:id="@+id/duration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/durationLabel"
-        android:layout_alignTop="@+id/durationLabel" android:layout_toEndOf="@+id/durationLabel"
-        android:layout_toRightOf="@+id/durationLabel"
-        tools:text="00:00"/>
-
-
-    <TextView
-        android:id="@+id/positionLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/durationLabel"
-        android:layout_marginRight="8dp"
-        android:layout_marginTop="8dp"
-        android:text="Posición: " android:textStyle="bold"/>
-
-    <TextView
-        android:id="@+id/position"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/positionLabel"
-        android:layout_toEndOf="@+id/durationLabel" android:layout_toRightOf="@+id/durationLabel"
-        tools:text="00:00"/>
-
 
 </RelativeLayout>

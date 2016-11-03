@@ -9,6 +9,13 @@
 
     <application>
 
+        <activity
+            android:name="es.munix.multidisplaycast.CastControlsActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+
         <service android:name="es.munix.multidisplaycast.services.AntiLeakActivityService"
                  android:enabled="true"
                  android:exported="false"
