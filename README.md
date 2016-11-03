@@ -6,4 +6,4 @@ Un wrapper para una integración sencilla de de una versión modificada y con mu
 
 ### Ejemplo
 
-Para comprobar cómo se usa puedes descargarte el [ejemplo](https://github.com/munix/Multi-Display-Cast/tree/master/demo) o probar el [APK](https://github.com/munix/Multi-Display-Cast/raw/master/Multicast-code-2(2.0)-date-03-11-2016.apk)
+Para comprobar cómo se usa puedes descargarte el [ejemplo](https://github.com/munix/Multi-Display-Cast/tree/master/demo) o probar el [APK](https://github.com/munix/Multi-Display-Cast/raw/master/demo.apk)
